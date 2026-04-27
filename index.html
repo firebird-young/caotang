@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>研学系统 · 数据看板</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --text: #1e293b;
+    --text2: #64748b;
+    --border: #e2e8f0;
+    --shadow: 0 4px 24px rgba(0,0,0,0.06);
+    --radius: 16px;
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  /* ===== Header ===== */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .header-logo {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 20px; font-weight: 700;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .header p { font-size: 13px; color: var(--text2); margin-top: 2px; }
+  .header-right { display: flex; gap: 10px; }
+  .btn {
+    padding: 8px 18px; border-radius: 10px; border: none;
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(99,102,241,0.4); }
+  .btn-outline { background: #fff; color: var(--text); border: 1.5px solid var(--border); }
+  .btn-outline:hover { border-color: #6366f1; color: #6366f1; }
+
+  /* ===== Section ===== */
+  .section-label {
+    font-size: 15px; font-weight: 700; color: var(--text2);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+    letter-spacing: 0.5px;
+  }
+  .section-label .icon { font-size: 16px; }
+
+  /* ===== Grid ===== */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .grid-4 {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  @media (max-width: 1200px) { .grid { grid-template-columns: repeat(3, 1fr); } .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 768px)  { .grid, .grid-4 { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 480px)  { .grid, .grid-4 { grid-template-columns: 1fr; } }
+
+  /* ===== Stat Card ===== */
+  .card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+    position: relative;
+    overflow: hidden;
+    transition: transform .2s, box-shadow .2s;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+  .card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 4px;
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+  .card[data-type="course"]::before  { background: linear-gradient(90deg, #6366f1, #8b5cf6); }
+  .card[data-type="forming"]::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .card[data-type="travel"]::before  { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+  .card[data-type="failed"]::before  { background: linear-gradient(90deg, #ef4444, #f87171); }
+  .card[data-type="done"]::before    { background: linear-gradient(90deg, #10b981, #34d399); }
+  .card[data-type="org"]::before     { background: linear-gradient(90deg, #8b5cf6, #a78bfa); }
+  .card[data-type="pending"]::before { background: linear-gradient(90deg, #f97316, #fb923c); }
+  .card[data-type="running"]::before { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
+  .card[data-type="orgdone"]::before { background: linear-gradient(90deg, #22c55e, #4ade80); }
+
+  .card-icon {
+    width: 42px; height: 42px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 19px; margin-bottom: 14px;
+  }
+  .card[data-type="course"] .card-icon  { background: #eef2ff; }
+  .card[data-type="forming"] .card-icon { background: #fffbeb; }
+  .card[data-type="travel"] .card-icon  { background: #eff6ff; }
+  .card[data-type="failed"] .card-icon  { background: #fef2f2; }
+  .card[data-type="done"] .card-icon    { background: #ecfdf5; }
+  .card[data-type="org"] .card-icon     { background: #f5f3ff; }
+  .card[data-type="pending"] .card-icon { background: #fff7ed; }
+  .card[data-type="running"] .card-icon { background: #f0f9ff; }
+  .card[data-type="orgdone"] .card-icon { background: #f0fdf4; }
+
+  .card-label { font-size: 13px; color: var(--text2); font-weight: 500; margin-bottom: 8px; }
+  .card-value { font-size: 30px; font-weight: 800; letter-spacing: -1px; line-height: 1; }
+  .card[data-type="course"] .card-value  { color: #6366f1; }
+  .card[data-type="forming"] .card-value { color: #d97706; }
+  .card[data-type="travel"] .card-value  { color: #2563eb; }
+  .card[data-type="failed"] .card-value  { color: #dc2626; }
+  .card[data-type="done"] .card-value    { color: #059669; }
+  .card[data-type="org"] .card-value     { color: #7c3aed; }
+  .card[data-type="pending"] .card-value { color: #ea580c; }
+  .card[data-type="running"] .card-value { color: #0284c7; }
+  .card[data-type="orgdone"] .card-value { color: #16a34a; }
+
+  .card-sub {
+    display: flex; gap: 16px; margin-top: 14px;
+    padding-top: 14px; border-top: 1px solid var(--border);
+  }
+  .card-sub-item { display: flex; flex-direction: column; gap: 2px; }
+  .card-sub-label { font-size: 11px; color: var(--text2); }
+  .card-sub-value { font-size: 16px; font-weight: 700; color: var(--text); }
+
+  /* ===== Detail Table ===== */
+  .table-section { margin-bottom: 32px; }
+  .table-section-title {
+    font-size: 17px; font-weight: 700; margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .table-section-title .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #6366f1; display: inline-block;
+  }
+  .table-wrap {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+  }
+  .table-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    flex-wrap: wrap; gap: 10px;
+  }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab {
+    padding: 6px 14px; border-radius: 8px; border: none;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    background: var(--bg); color: var(--text2);
+    transition: all .2s;
+  }
+  .tab.active { background: #6366f1; color: #fff; }
+  .tab:hover:not(.active) { background: #e2e8f0; }
+
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: #f8fafc; }
+  th {
+    padding: 12px 20px; text-align: left;
+    font-size: 12px; font-weight: 600; color: var(--text2);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 14px 20px; font-size: 13px;
+    border-bottom: 1px solid #f1f5f9;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover { background: #fafbfd; }
+  .badge {
+    display: inline-block; padding: 3px 10px; border-radius: 6px;
+    font-size: 12px; font-weight: 600;
+  }
+  .badge-forming { background: #fffbeb; color: #d97706; }
+  .badge-travel  { background: #eff6ff; color: #2563eb; }
+  .badge-failed  { background: #fef2f2; color: #dc2626; }
+  .badge-done    { background: #ecfdf5; color: #059669; }
+  .badge-pending { background: #fff7ed; color: #ea580c; }
+  .badge-running { background: #f0f9ff; color: #0284c7; }
+  .badge-orgdone { background: #f0fdf4; color: #16a34a; }
+  .amount { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .amount-positive { color: #059669; }
+  .amount-zero { color: var(--text2); }
+
+  /* ===== Token Modal ===== */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; z-index: 1000;
+    background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--card); border-radius: 20px;
+    padding: 32px; width: 420px; max-width: 90vw;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.15);
+  }
+  .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .modal p { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+  .modal input {
+    width: 100%; padding: 12px 16px; border: 1.5px solid var(--border);
+    border-radius: 10px; font-size: 14px; outline: none;
+    transition: border-color .2s;
+  }
+  .modal input:focus { border-color: #6366f1; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+
+  /* ===== Loading ===== */
+  .loading {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 60px; gap: 16px; color: var(--text2);
+  }
+  .spinner {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 3px solid var(--border); border-top-color: #6366f1;
+    animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ===== Error ===== */
+  .error-msg {
+    text-align: center; padding: 40px; color: #dc2626; font-size: 14px;
+  }
+  .error-msg a { color: #6366f1; text-decoration: underline; cursor: pointer; }
+
+  /* ===== Footer ===== */
+  .footer {
+    text-align: center; padding: 24px;
+    font-size: 12px; color: var(--text2);
+  }
+
+  /* ===== Animate ===== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .row-1 .card { animation: fadeUp .5s ease both; }
+  .row-1 .card:nth-child(2) { animation-delay: .06s; }
+  .row-1 .card:nth-child(3) { animation-delay: .12s; }
+  .row-1 .card:nth-child(4) { animation-delay: .18s; }
+  .row-1 .card:nth-child(5) { animation-delay: .24s; }
+  .row-2 .card { animation: fadeUp .5s ease both; animation-delay: .3s; }
+  .row-2 .card:nth-child(2) { animation-delay: .36s; }
+  .row-2 .card:nth-child(3) { animation-delay: .42s; }
+  .row-2 .card:nth-child(4) { animation-delay: .48s; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-left">
+    <div class="header-logo">研学</div>
+    <div>
+      <h1>研学系统数据看板</h1>
+      <p id="updateTime">数据加载中...</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="btn btn-primary" onclick="refreshData()">🔄 刷新数据</button>
+  </div>
+</div>
+
+<!-- Row 1: 课程与拼团订单 -->
+<div class="section-label"><span class="icon">📦</span> 课程与拼团数据</div>
+<div class="grid row-1" id="orderCards">
+  <div class="card" data-type="course">
+    <div class="card-icon">📚</div>
+    <div class="card-label">已上线课程</div>
+    <div class="card-value" id="courseCount">--</div>
+    <div class="card-sub">
+      <div class="card-sub-item">
+        <span class="card-sub-label">课程类型</span>
+        <span class="card-sub-value" id="courseTypes">--</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" data-type="forming">
+    <div class="card-icon">⏳</div>
+    <div class="card-label">待成团</div>
+    <div class="card-value" id="formingCount">--</div>
+    <div class="card-sub">
+      <div class="card-sub-item">
+        <span class="card-sub-label">订单笔数</span>
+        <span class="card-sub-value" id="formingOrders">--</span>
+      </div>
+      <div class="card-sub-item">
+        <span class="card-sub-label">合计金额</span>
+        <span class="card-sub-value" id="formingAmount">--</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" data-type="travel">
+    <div class="card-icon">🧳</div>
+    <div class="card-label">待出行</div>
+    <div class="card-value" id="travelCount">--</div>
+    <div class="card-sub">
+      <div class="card-sub-item">
+        <span class="card-sub-label">订单笔数</span>
+        <span class="card-sub-value" id="travelOrders">--</span>
+      </div>
+      <div class="card-sub-item">
+        <span class="card-sub-label">合计金额</span>
+        <span class="card-sub-value" id="travelAmount">--</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" data-type="failed">
+    <div class="card-icon">❌</div>
+    <div class="card-label">拼团失败</div>
+    <div class="card-value" id="failedCount">--</div>
+    <div class="card-sub">
+      <div class="card-sub-item">
+        <span class="card-sub-label">失败笔数</span>
+        <span class="card-sub-value" id="failedOrders">--</span>
+      </div>
+      <div class="card-sub-item">
+        <span class="card-sub-label">涉及课程</span>
+        <span class="card-sub-value" id="failedProducts">--</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" data-type="done">
+    <div class="card-icon">✅</div>
+    <div class="card-label">已完成</div>
+    <div class="card-value" id="doneCount">--</div>
+    <div class="card-sub">
+      <div class="card-sub-item">
+        <span class="card-sub-label">完成笔数</span>
+        <span class="card-sub-value" id="doneOrders">--</span>
+      </div>
+      <div class="card-sub-item">
+        <span class="card-sub-label">合计金额</span>
+        <span class="card-sub-value" id="doneAmount">--</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 2: 机构运营 -->
+<div class="section-label"><span class="icon">🏛️</span> 机构运营数据</div>
+<div class="grid-4 row-2" id="orgCards">
+  <div class="card" data-type="org">
+    <div class="card-icon">🏢</div>
+    <div class="card-label">研学机构入驻</div>
+    <div class="card-value" id="orgCount">--</div>
+    <div class="card-sub">
+      <div class="card-sub-item">
+        <span class="card-sub-label">已通过审核</span>
+        <span class="card-sub-value" id="orgAudited">--</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" data-type="pending">
+    <div class="card-icon">📋</div>
+    <div class="card-label">机构待执行研学</div>
+    <div class="card-value" id="pendingCount">--</div>
+    <div class="card-sub">
+      <div class="card-sub-item">
+        <span class="card-sub-label">待执行</span>
+        <span class="card-sub-value" id="pendingNum">--</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" data-type="running">
+    <div class="card-icon">🏃</div>
+    <div class="card-label">机构执行中研学</div>
+    <div class="card-value" id="runningCount">--</div>
+    <div class="card-sub">
+      <div class="card-sub-item">
+        <span class="card-sub-label">执行中</span>
+        <span class="card-sub-value" id="runningNum">--</span>
+      </div>
+    </div>
+  </div>
+  <div class="card" data-type="orgdone">
+    <div class="card-icon">🏆</div>
+    <div class="card-label">机构已完成研学</div>
+    <div class="card-value" id="orgdoneCount">--</div>
+    <div class="card-sub">
+      <div class="card-sub-item">
+        <span class="card-sub-label">已完成</span>
+        <span class="card-sub-value" id="orgdoneNum">--</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Table: 订单明细 -->
+<div class="table-section">
+  <div class="table-section-title"><span class="dot"></span> 订单明细</div>
+  <div class="table-wrap">
+    <div class="table-header">
+      <div class="tabs">
+        <button class="tab active" data-state="1" onclick="switchOrderTab(this)">待成团</button>
+        <button class="tab" data-state="2" onclick="switchOrderTab(this)">待出行</button>
+        <button class="tab" data-state="3" onclick="switchOrderTab(this)">拼团失败</button>
+        <button class="tab" data-state="4" onclick="switchOrderTab(this)">已完成</button>
+      </div>
+      <span style="font-size:12px;color:var(--text2)" id="orderTableInfo">加载中...</span>
+    </div>
+    <div id="orderTableBody">
+      <div class="loading"><div class="spinner"></div><span>加载数据中...</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Detail Table: 机构研学明细 -->
+<div class="table-section">
+  <div class="table-section-title"><span class="dot" style="background:#7c3aed"></span> 机构研学明细</div>
+  <div class="table-wrap">
+    <div class="table-header">
+      <div class="tabs">
+        <button class="tab active" data-check="1" onclick="switchApplyTab(this)">待执行</button>
+        <button class="tab" data-check="2" onclick="switchApplyTab(this)">执行中</button>
+        <button class="tab" data-check="3" onclick="switchApplyTab(this)">已完成</button>
+      </div>
+      <span style="font-size:12px;color:var(--text2)" id="applyTableInfo">加载中...</span>
+    </div>
+    <div id="applyTableBody">
+      <div class="loading"><div class="spinner"></div><span>加载数据中...</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- Token Modal -->
+<div class="modal-overlay" id="tokenModal">
+  <div class="modal">
+    <h3>🔑 设置访问令牌</h3>
+    <p>请输入 CMS 系统的 Bearer Token（Token 过期时需要重新设置）</p>
+    <input type="text" id="tokenInput" placeholder="Bearer xxxxxxxxxxxxxx" />
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeTokenModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveToken()">保存并刷新</button>
+    </div>
+  </div>
+</div>
+
+<div class="footer">研学数据看板 · 数据实时从 CMS 系统获取 · <span id="footerTime"></span></div>
+
+<script>
+const API_BASE = 'https://cms.gnyanxue.com/admin-api';
+const PRODUCT_API  = API_BASE + '/study/travel-product/page?pageNo=1&pageSize=100&state=1';
+const ORDER_API    = API_BASE + '/study/travel-group-order/page';
+const ORG_API      = API_BASE + '/member/user-auth/adminPage';
+const APPLY_API    = API_BASE + '/study/product-apply/page';
+
+// ===== Token 管理 =====
+function getToken() {
+  return localStorage.getItem('yanxue_token') || '5204445c51064e0c92af1bf2192e00e6';
+}
+function setToken(t) {
+  localStorage.setItem('yanxue_token', t);
+}
+function openTokenModal() {
+  document.getElementById('tokenInput').value = getToken();
+  document.getElementById('tokenModal').classList.add('show');
+}
+function closeTokenModal() {
+  document.getElementById('tokenModal').classList.remove('show');
+}
+function saveToken() {
+  let t = document.getElementById('tokenInput').value.trim();
+  if (t.startsWith('Bearer ')) t = t.slice(7);
+  if (!t) return alert('请输入有效的 Token');
+  setToken(t);
+  closeTokenModal();
+  refreshData();
+}
+
+// ===== 请求封装 =====
+async function apiGet(url) {
+  const token = getToken();
+  const resp = await fetch(url, {
+    headers: {
+      'accept': 'application/json, text/plain, */*',
+      'authorization': 'Bearer ' + token,
+      'tenant-id': '1',
+      'Content-Type': 'application/json'
+    }
+  });
+  if (resp.status === 401) {
+    openTokenModal();
+    throw new Error('Token 已过期，请重新设置');
+  }
+  if (!resp.ok) throw new Error('请求失败: ' + resp.status);
+  const json = await resp.json();
+  if (json.code !== 200) throw new Error(json.msg || '接口异常');
+  return json.data;
+}
+
+// 翻页全量拉取 - 订单
+async function fetchAllOrders(teamState) {
+  let all = [];
+  let page = 1;
+  while (true) {
+    const url = ORDER_API + `?pageNo=${page}&pageSize=100&teamState=${teamState}`;
+    const data = await apiGet(url);
+    all = all.concat(data.list);
+    if (all.length >= data.total) break;
+    page++;
+  }
+  return all;
+}
+
+// 翻页全量拉取 - 机构研学申请
+async function fetchAllApply(checkState) {
+  let all = [];
+  let page = 1;
+  while (true) {
+    const url = APPLY_API + `?pageNo=${page}&pageSize=100&checkState=${checkState}`;
+    const data = await apiGet(url);
+    all = all.concat(data.list);
+    if (all.length >= data.total) break;
+    page++;
+  }
+  return all;
+}
+
+// 翻页全量拉取 - 机构
+async function fetchAllOrgs() {
+  let all = [];
+  let page = 1;
+  while (true) {
+    const url = ORG_API + `?pageNo=${page}&pageSize=100&auditState=2`;
+    const data = await apiGet(url);
+    all = all.concat(data.list);
+    if (all.length >= data.total) break;
+    page++;
+  }
+  return all;
+}
+
+// ===== 数字动画 =====
+function animateNum(el, target, prefix, suffix) {
+  prefix = prefix || ''; suffix = suffix || '';
+  const start = 0;
+  const duration = 600;
+  const startTime = performance.now();
+  function tick(now) {
+    const p = Math.min((now - startTime) / duration, 1);
+    const ease = 1 - Math.pow(1 - p, 3);
+    const val = start + (target - start) * ease;
+    if (Number.isInteger(target)) {
+      el.textContent = prefix + Math.round(val).toLocaleString() + suffix;
+    } else {
+      el.textContent = prefix + val.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + suffix;
+    }
+    if (p < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+// 格式化金额
+function fmtMoney(v) {
+  return '¥' + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// ===== 订单状态 =====
+const ORDER_STATE = {
+  1: { label: '待成团', badge: 'badge-forming' },
+  2: { label: '待出行', badge: 'badge-travel' },
+  3: { label: '拼团失败', badge: 'badge-failed' },
+  4: { label: '已完成', badge: 'badge-done' }
+};
+
+// ===== 机构研学审核状态 =====
+const CHECK_STATE = {
+  1: { label: '待执行', badge: 'badge-pending' },
+  2: { label: '执行中', badge: 'badge-running' },
+  3: { label: '已完成', badge: 'badge-orgdone' }
+};
+
+let allOrderData = {};
+let allApplyData = {};
+let currentOrderTab = 1;
+let currentApplyTab = 1;
+
+// ===== 渲染订单表格 =====
+function renderOrderTable(state) {
+  const orders = allOrderData[state] || [];
+  const tbody = document.getElementById('orderTableBody');
+  const info = document.getElementById('orderTableInfo');
+
+  info.textContent = `共 ${orders.length} 条记录`;
+
+  if (orders.length === 0) {
+    tbody.innerHTML = '<div class="loading" style="padding:32px;color:var(--text2)">暂无数据</div>';
+    return;
+  }
+
+  orders.sort((a, b) => (b.createTime || 0) - (a.createTime || 0));
+
+  let html = '<table><thead><tr>';
+  html += '<th>订单编号</th><th>课程名称</th><th>场次</th><th>出行日期</th>';
+  html += '<th>报名人数</th><th>状态</th><th>金额</th>';
+  html += '</tr></thead><tbody>';
+
+  orders.forEach(o => {
+    const si = ORDER_STATE[o.teamState] || { label: '未知', badge: '' };
+    const amtClass = o.salePrice > 0 ? 'amount-positive' : 'amount-zero';
+    html += '<tr>';
+    html += '<td style="font-family:monospace;font-size:12px">' + (o.groupOrderNo || '--') + '</td>';
+    html += '<td style="font-weight:600">' + (o.productName || '--') + '</td>';
+    html += '<td>' + (o.sessionName || '--') + '</td>';
+    html += '<td>' + (o.sessionTime || '--') + '</td>';
+    html += '<td>' + (o.haveNum || 0) + '人</td>';
+    html += '<td><span class="badge ' + si.badge + '">' + si.label + '</span></td>';
+    html += '<td class="amount ' + amtClass + '">' + fmtMoney(o.salePrice) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  tbody.innerHTML = html;
+}
+
+// ===== 渲染机构研学表格 =====
+function renderApplyTable(checkState) {
+  const items = allApplyData[checkState] || [];
+  const tbody = document.getElementById('applyTableBody');
+  const info = document.getElementById('applyTableInfo');
+
+  info.textContent = `共 ${items.length} 条记录`;
+
+  if (items.length === 0) {
+    tbody.innerHTML = '<div class="loading" style="padding:32px;color:var(--text2)">暂无数据</div>';
+    return;
+  }
+
+  items.sort((a, b) => (b.createTime || 0) - (a.createTime || 0));
+
+  let html = '<table><thead><tr>';
+  html += '<th>机构名称</th><th>研学课程</th><th>时间段</th><th>执行时间</th>';
+  html += '<th>签到</th><th>签退</th><th>状态</th>';
+  html += '</tr></thead><tbody>';
+
+  items.forEach(o => {
+    const si = CHECK_STATE[o.checkState] || { label: '未知', badge: '' };
+    const checkIn = o.checkTime ? new Date(o.checkTime).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) : '--';
+    const checkOut = o.checkOutTime ? new Date(o.checkOutTime).toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'}) : '--';
+    html += '<tr>';
+    html += '<td style="font-weight:600">' + (o.organizeName || '--') + '</td>';
+    html += '<td>' + (o.productName || '--') + '</td>';
+    html += '<td>' + (o.timeInterval || '--') + '</td>';
+    html += '<td>' + (o.startTimeStr || '--') + '</td>';
+    html += '<td>' + checkIn + '</td>';
+    html += '<td>' + checkOut + '</td>';
+    html += '<td><span class="badge ' + si.badge + '">' + si.label + '</span></td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  tbody.innerHTML = html;
+}
+
+function switchOrderTab(el) {
+  el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentOrderTab = parseInt(el.dataset.state);
+  renderOrderTable(currentOrderTab);
+}
+
+function switchApplyTab(el) {
+  el.parentElement.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  currentApplyTab = parseInt(el.dataset.check);
+  renderApplyTable(currentApplyTab);
+}
+
+// ===== 主刷新 =====
+async function refreshData() {
+  const now = new Date();
+  const timeStr = now.getFullYear() + '-' +
+    String(now.getMonth()+1).padStart(2,'0') + '-' +
+    String(now.getDate()).padStart(2,'0') + ' ' +
+    String(now.getHours()).padStart(2,'0') + ':' +
+    String(now.getMinutes()).padStart(2,'0');
+
+  try {
+    // 1. 课程
+    const productData = await apiGet(PRODUCT_API);
+    const products = productData.list;
+    const courseTotal = productData.total;
+    const typeSet = new Set(products.map(p => p.proType));
+    const typeNames = { 1: '研学', 2: '研学', 3: '其他' };
+    const typeStr = [...typeSet].map(t => typeNames[t] || '类型' + t).join('、');
+
+    animateNum(document.getElementById('courseCount'), courseTotal, '', ' 门');
+    document.getElementById('courseTypes').textContent = typeStr || '--';
+
+    // 2. 各状态订单
+    for (const s of [1, 2, 3, 4]) {
+      allOrderData[s] = await fetchAllOrders(s);
+    }
+
+    const forming = allOrderData[1];
+    const formingAmt = forming.reduce((s, o) => s + (o.salePrice || 0), 0);
+    animateNum(document.getElementById('formingCount'), forming.length, '', ' 笔');
+    document.getElementById('formingOrders').textContent = forming.length + ' 笔';
+    document.getElementById('formingAmount').textContent = fmtMoney(formingAmt);
+
+    const travel = allOrderData[2];
+    const travelAmt = travel.reduce((s, o) => s + (o.salePrice || 0), 0);
+    animateNum(document.getElementById('travelCount'), travel.length, '', ' 笔');
+    document.getElementById('travelOrders').textContent = travel.length + ' 笔';
+    document.getElementById('travelAmount').textContent = fmtMoney(travelAmt);
+
+    const failed = allOrderData[3];
+    const failedProducts = new Set(failed.map(o => o.productName)).size;
+    animateNum(document.getElementById('failedCount'), failed.length, '', ' 笔');
+    document.getElementById('failedOrders').textContent = failed.length + ' 笔';
+    document.getElementById('failedProducts').textContent = failedProducts + ' 个';
+
+    const done = allOrderData[4];
+    const doneAmt = done.reduce((s, o) => s + (o.salePrice || 0), 0);
+    animateNum(document.getElementById('doneCount'), doneAmt, '¥', '');
+    document.getElementById('doneOrders').textContent = done.length + ' 笔';
+    document.getElementById('doneAmount').textContent = fmtMoney(doneAmt);
+
+    // 3. 机构入驻
+    const orgs = await fetchAllOrgs();
+    animateNum(document.getElementById('orgCount'), orgs.length, '', ' 家');
+    document.getElementById('orgAudited').textContent = '已审核通过 ' + orgs.length + ' 家';
+
+    // 4. 机构研学申请
+    for (const cs of [1, 2, 3]) {
+      allApplyData[cs] = await fetchAllApply(cs);
+    }
+
+    const pending = allApplyData[1];
+    animateNum(document.getElementById('pendingCount'), pending.length, '', ' 条');
+    document.getElementById('pendingNum').textContent = pending.length + ' 条待执行';
+
+    const running = allApplyData[2];
+    animateNum(document.getElementById('runningCount'), running.length, '', ' 条');
+    document.getElementById('runningNum').textContent = running.length + ' 条执行中';
+
+    const orgdone = allApplyData[3];
+    animateNum(document.getElementById('orgdoneCount'), orgdone.length, '', ' 条');
+    document.getElementById('orgdoneNum').textContent = orgdone.length + ' 条已完成';
+
+    // 更新时间
+    document.getElementById('updateTime').textContent = '最近更新: ' + timeStr;
+    document.getElementById('footerTime').textContent = '更新于 ' + timeStr;
+
+    // 渲染表格
+    renderOrderTable(currentOrderTab);
+    renderApplyTable(currentApplyTab);
+
+  } catch (err) {
+    if (err.message.includes('Token')) return;
+    document.getElementById('orderTableBody').innerHTML =
+      '<div class="error-msg">加载失败: ' + err.message + '<br><a onclick="refreshData()">点击重试</a></div>';
+  }
+}
+
+// ===== 初始化 =====
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  const urlToken = params.get('token');
+  if (urlToken) setToken(urlToken);
+  refreshData();
+});
+
+document.getElementById('tokenModal').addEventListener('click', function(e) {
+  if (e.target === this) closeTokenModal();
+});
+</script>
+
+</body>
+</html>
