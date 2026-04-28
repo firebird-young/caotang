@@ -464,6 +464,7 @@ const APPLY_API    = API_BASE + '/study/product-apply/page';
 const DEFAULT_TOKEN = '5204445c51064e0c92af1bf2192e00e6';
 const TOKEN_KEY = 'yanxue_token';
 let _tokenModalShown = false;
+let _serverToken = DEFAULT_TOKEN;
 
 // 安全的 localStorage 读写（兼容 file:// 协议）
 function safeGetStorage(key, fallback) {
@@ -473,16 +474,40 @@ function safeGetStorage(key, fallback) {
 function safeSetStorage(key, val) {
   try { localStorage.setItem(key, val); } catch(e) {}
 }
+
+// 从服务器 token.txt 加载共享 token
+async function loadServerToken() {
+  try {
+    const resp = await fetch('./token.txt?t=' + Date.now());
+    if (resp.ok) {
+      const text = await resp.text();
+      const token = text.trim();
+      if (token && token.length > 10) {
+        _serverToken = token;
+        return token;
+      }
+    }
+  } catch(e) {}
+  return null;
+}
+
+// 获取 token 优先级：localStorage > token.txt > 硬编码默认值
 function getToken() {
-  return safeGetStorage(TOKEN_KEY, DEFAULT_TOKEN);
+  // localStorage 有值说明用户手动设置过（当前会话有效）
+  const local = safeGetStorage(TOKEN_KEY, '');
+  if (local) return local;
+  // 否则用服务器共享 token
+  return _serverToken;
 }
 function setToken(t) {
   safeSetStorage(TOKEN_KEY, t);
+  // 同时更新服务器缓存
+  _serverToken = t;
 }
 function openTokenModal() {
-  if (_tokenModalShown) return; // 防止重复弹窗
+  if (_tokenModalShown) return;
   _tokenModalShown = true;
-  document.getElementById('tokenInput').value = getToken();
+  document.getElementById('tokenInput').value = '';
   document.getElementById('tokenModal').classList.add('show');
 }
 function closeTokenModal() {
@@ -495,6 +520,7 @@ function saveToken() {
   if (!t) return alert('请输入有效的 Token');
   setToken(t);
   closeTokenModal();
+  alert('Token 已保存到当前浏览器。\n\n如需多设备共享，请将新 Token 更新到 GitHub 仓库的 token.txt 文件中。');
   refreshData();
 }
 
@@ -803,10 +829,15 @@ async function refreshData() {
 }
 
 // ===== 初始化 =====
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   const urlToken = params.get('token');
   if (urlToken) setToken(urlToken);
+  // 先从服务器 token.txt 加载共享 token
+  const serverToken = await loadServerToken();
+  if (serverToken && !urlToken) {
+    _serverToken = serverToken;
+  }
   refreshData();
 });
 
