@@ -462,20 +462,11 @@ const APPLY_API    = API_BASE + '/study/product-apply/page';
 
 // ===== Token 管理 =====
 const DEFAULT_TOKEN = '5204445c51064e0c92af1bf2192e00e6';
-const TOKEN_KEY = 'yanxue_token';
 let _tokenModalShown = false;
-let _serverToken = DEFAULT_TOKEN;
+// 运行时 token，优先从 token.txt 读取，弹窗输入后更新内存中的值
+let _currentToken = DEFAULT_TOKEN;
 
-// 安全的 localStorage 读写（兼容 file:// 协议）
-function safeGetStorage(key, fallback) {
-  try { return localStorage.getItem(key) || fallback; }
-  catch(e) { return fallback; }
-}
-function safeSetStorage(key, val) {
-  try { localStorage.setItem(key, val); } catch(e) {}
-}
-
-// 从服务器 token.txt 加载共享 token
+// 从服务器 token.txt 加载共享 token（每次加 时间戳防缓存）
 async function loadServerToken() {
   try {
     const resp = await fetch('./token.txt?t=' + Date.now());
@@ -483,7 +474,7 @@ async function loadServerToken() {
       const text = await resp.text();
       const token = text.trim();
       if (token && token.length > 10) {
-        _serverToken = token;
+        _currentToken = token;
         return token;
       }
     }
@@ -491,19 +482,15 @@ async function loadServerToken() {
   return null;
 }
 
-// 获取 token 优先级：localStorage > token.txt > 硬编码默认值
+// 获取当前运行时 token（只用内存变量，不再读 localStorage）
 function getToken() {
-  // localStorage 有值说明用户手动设置过（当前会话有效）
-  const local = safeGetStorage(TOKEN_KEY, '');
-  if (local) return local;
-  // 否则用服务器共享 token
-  return _serverToken;
+  return _currentToken;
 }
+// 弹窗输入新 token 后，只更新内存变量（不存 localStorage，避免旧值干扰）
 function setToken(t) {
-  safeSetStorage(TOKEN_KEY, t);
-  // 同时更新服务器缓存
-  _serverToken = t;
+  _currentToken = t;
 }
+
 function openTokenModal() {
   if (_tokenModalShown) return;
   _tokenModalShown = true;
@@ -520,7 +507,7 @@ function saveToken() {
   if (!t) return alert('请输入有效的 Token');
   setToken(t);
   closeTokenModal();
-  alert('Token 已保存到当前浏览器。\n\n如需多设备共享，请将新 Token 更新到 GitHub 仓库的 token.txt 文件中。');
+  alert('Token 已在本次会话中生效。\n\n请同步将新 Token 更新到 GitHub 仓库的 token.txt 文件，下次所有设备打开时将自动使用新 Token。');
   refreshData();
 }
 
@@ -832,11 +819,12 @@ async function refreshData() {
 document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   const urlToken = params.get('token');
-  if (urlToken) setToken(urlToken);
-  // 先从服务器 token.txt 加载共享 token
-  const serverToken = await loadServerToken();
-  if (serverToken && !urlToken) {
-    _serverToken = serverToken;
+  if (urlToken) {
+    // URL 带 token 参数则直接使用
+    setToken(urlToken);
+  } else {
+    // 否则从 token.txt 加载共享 token（每次刷新页面都重新读取，确保拿到最新值）
+    await loadServerToken();
   }
   refreshData();
 });
