@@ -438,19 +438,6 @@
   </div>
 </div>
 
-<!-- Token Modal -->
-<div class="modal-overlay" id="tokenModal">
-  <div class="modal">
-    <h3>🔑 设置访问令牌</h3>
-    <p>请输入 CMS 系统的 Bearer Token（Token 过期时需要重新设置）</p>
-    <input type="text" id="tokenInput" placeholder="Bearer xxxxxxxxxxxxxx" />
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeTokenModal()">取消</button>
-      <button class="btn btn-primary" onclick="saveToken()">保存并刷新</button>
-    </div>
-  </div>
-</div>
-
 <div class="footer">研学数据看板 · 数据实时从 CMS 系统获取 · <span id="footerTime"></span></div>
 
 <script>
@@ -460,78 +447,23 @@ const ORDER_API    = API_BASE + '/study/travel-group-order/page';
 const ORG_API      = API_BASE + '/member/user-auth/adminPage';
 const APPLY_API    = API_BASE + '/study/product-apply/page';
 
-// ===== Token 管理 =====
-const DEFAULT_TOKEN = '5204445c51064e0c92af1bf2192e00e6';
-let _tokenModalShown = false;
-// 运行时 token，优先从 token.txt 读取，弹窗输入后更新内存中的值
-let _currentToken = DEFAULT_TOKEN;
-
-// 从服务器 token.txt 加载共享 token（每次加 时间戳防缓存）
-async function loadServerToken() {
-  try {
-    const resp = await fetch('./token.txt?t=' + Date.now());
-    if (resp.ok) {
-      const text = await resp.text();
-      const token = text.trim();
-      if (token && token.length > 10) {
-        _currentToken = token;
-        return token;
-      }
-    }
-  } catch(e) {}
-  return null;
-}
-
-// 获取当前运行时 token（只用内存变量，不再读 localStorage）
-function getToken() {
-  return _currentToken;
-}
-// 弹窗输入新 token 后，只更新内存变量（不存 localStorage，避免旧值干扰）
-function setToken(t) {
-  _currentToken = t;
-}
-
-function openTokenModal() {
-  if (_tokenModalShown) return;
-  _tokenModalShown = true;
-  document.getElementById('tokenInput').value = '';
-  document.getElementById('tokenModal').classList.add('show');
-}
-function closeTokenModal() {
-  _tokenModalShown = false;
-  document.getElementById('tokenModal').classList.remove('show');
-}
-function saveToken() {
-  let t = document.getElementById('tokenInput').value.trim();
-  if (t.startsWith('Bearer ')) t = t.slice(7);
-  if (!t) return alert('请输入有效的 Token');
-  setToken(t);
-  closeTokenModal();
-  alert('Token 已在本次会话中生效。\n\n请同步将新 Token 更新到 GitHub 仓库的 token.txt 文件，下次所有设备打开时将自动使用新 Token。');
-  refreshData();
-}
+// ===== Token（硬编码，过期时直接改这里） =====
+const TOKEN = 'feb2de8cc9ca4b208ac85eb0fcecbe0b';
 
 // ===== 请求封装 =====
 async function apiGet(url) {
-  const token = getToken();
   let resp;
   try {
     resp = await fetch(url, {
       headers: {
         'accept': 'application/json, text/plain, */*',
-        'authorization': 'Bearer ' + token,
+        'authorization': 'Bearer ' + TOKEN,
         'tenant-id': '1',
         'Content-Type': 'application/json'
       }
     });
   } catch (e) {
-    // fetch 本身失败（网络/CORS），提示检查
     throw new Error('网络请求失败，请检查网络连接');
-  }
-  // HTTP 401 = token 过期
-  if (resp.status === 401) {
-    openTokenModal();
-    throw new Error('STOP'); // 中断后续请求
   }
   if (!resp.ok) throw new Error('请求失败: ' + resp.status);
   let json;
@@ -539,11 +471,6 @@ async function apiGet(url) {
     json = await resp.json();
   } catch (e) {
     throw new Error('响应解析失败');
-  }
-  // 业务层 token 失效检测
-  if (json.code === 401) {
-    openTokenModal();
-    throw new Error('STOP');
   }
   if (json.code !== 200) throw new Error(json.msg || '接口异常 (code:' + json.code + ')');
   return json.data;
@@ -808,29 +735,14 @@ async function refreshData() {
     renderApplyTable(currentApplyTab);
 
   } catch (err) {
-    // Token 过期时只弹窗，不显示错误
-    if (err.message === 'STOP') return;
     document.getElementById('orderTableBody').innerHTML =
       '<div class="error-msg">加载失败: ' + err.message + '<br><a onclick="refreshData()">点击重试</a></div>';
   }
 }
 
 // ===== 初始化 =====
-document.addEventListener('DOMContentLoaded', async () => {
-  const params = new URLSearchParams(location.search);
-  const urlToken = params.get('token');
-  if (urlToken) {
-    // URL 带 token 参数则直接使用
-    setToken(urlToken);
-  } else {
-    // 否则从 token.txt 加载共享 token（每次刷新页面都重新读取，确保拿到最新值）
-    await loadServerToken();
-  }
+document.addEventListener('DOMContentLoaded', () => {
   refreshData();
-});
-
-document.getElementById('tokenModal').addEventListener('click', function(e) {
-  if (e.target === this) closeTokenModal();
 });
 </script>
 
